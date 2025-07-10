@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API - GOU Auth System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste da API - GOU Auth System</h1>
+    
+    <div class="test-section">
+        <h3>1. Teste de Conexão</h3>
+        <button class="btn" onclick="testConnection()">Testar Conexão</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Teste de Estatísticas</h3>
+        <button class="btn" onclick="testStats()">Buscar Estatísticas</button>
+        <div id="statsResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Teste de Geração de Chaves</h3>
+        <button class="btn" onclick="testGenerateKeys()">Gerar 1 Chave</button>
+        <button class="btn" onclick="testGenerateKeys(5)">Gerar 5 Chaves</button>
+        <div id="generateResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Teste de Validação de Chave</h3>
+        <input type="text" id="testKey" placeholder="Digite uma chave para testar" style="width: 300px; padding: 8px;">
+        <button class="btn" onclick="testValidateKey()">Validar Chave</button>
+        <div id="validateResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://gou-auth-system-uuvq.vercel.app/api/index.php';
+        
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(data, null, 2);
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+        
+        async function testConnection() {
+            try {
+                const response = await fetch(`${API_BASE}?action=get_stats`);
+                const data = await response.json();
+                showResult('connectionResult', {
+                    status: response.status,
+                    success: data.success,
+                    message: data.message || 'Conexão bem-sucedida'
+                });
+            } catch (error) {
+                showResult('connectionResult', {
+                    error: error.message,
+                    type: 'Conexão falhou'
+                }, true);
+            }
+        }
+        
+        async function testStats() {
+            try {
+                const response = await fetch(`${API_BASE}?action=get_stats`);
+                const data = await response.json();
+                showResult('statsResult', data);
+            } catch (error) {
+                showResult('statsResult', {
+                    error: error.message,
+                    type: 'Erro ao buscar estatísticas'
+                }, true);
+            }
+        }
+        
+        async function testGenerateKeys(count = 1) {
+            try {
+                const response = await fetch(`${API_BASE}?action=generate_keys`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        count: count,
+                        prefix: 'TEST'
+                    })
+                });
+                
+                const responseText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    showResult('generateResult', {
+                        error: 'Erro ao fazer parse da resposta',
+                        responseText: responseText,
+                        parseError: parseError.message
+                    }, true);
+                    return;
+                }
+                
+                showResult('generateResult', {
+                    status: response.status,
+                    data: data,
+                    keysGenerated: data.keys ? data.keys.length : 0
+                });
+            } catch (error) {
+                showResult('generateResult', {
+                    error: error.message,
+                    type: 'Erro ao gerar chaves'
+                }, true);
+            }
+        }
+        
+        async function testValidateKey() {
+            const key = document.getElementById('testKey').value;
+            if (!key) {
+                showResult('validateResult', {
+                    error: 'Digite uma chave para testar'
+                }, true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}?action=validate_key`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        key: key,
+                        computer_name: 'TEST-PC',
+                        user_name: 'TestUser',
+                        serial_number: 'TEST123'
+                    })
+                });
+                
+                const data = await response.json();
+                showResult('validateResult', {
+                    status: response.status,
+                    data: data
+                });
+            } catch (error) {
+                showResult('validateResult', {
+                    error: error.message,
+                    type: 'Erro ao validar chave'
+                }, true);
+            }
+        }
+        
+        // Teste automático ao carregar a página
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html> 
